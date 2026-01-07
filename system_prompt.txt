@@ -1,0 +1,92 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Python 调用模板：行健 AGENT
+功能：
+- 加载整合终版 system prompt
+- 输入用户信息 / 文本
+- 自动生成符合行为健康规范的回复
+"""
+
+import os
+import openai
+
+# -----------------------------
+# 配置 API Key
+# -----------------------------
+openai.api_key = os.getenv("OPENAI_API_KEY")  # 请在系统环境变量中设置
+
+# -----------------------------
+# 加载 system prompt
+# -----------------------------
+with open("system_prompt.txt", "r", encoding="utf-8") as f:
+    SYSTEM_PROMPT = f.read()
+
+# -----------------------------
+# AGENT 核心调用函数
+# -----------------------------
+def generate_agent_response(user_input: str, user_context: dict = None) -> str:
+    """
+    调用 OpenAI API 生成 AGENT 回复
+    :param user_input: 用户输入文本
+    :param user_context: 可选，用户信息字典，如阶段、情绪、文化背景等
+    :return: AGENT 输出文本
+    """
+    # 构建上下文消息
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"用户输入：{user_input}\n用户信息：{user_context or {}}"}
+    ]
+    
+    # 调用 Chat API
+    response = openai.ChatCompletion.create(
+        model="gpt-5-mini",        # 可替换为 GPT-5 系列可用模型
+        messages=messages,
+        temperature=0.7,           # 可调节创造性
+        max_tokens=1000,           # 输出长度
+        top_p=0.9
+    )
+    
+    # 提取文本
+    agent_output = response.choices[0].message['content'].strip()
+    
+    # 可选：在本地做简单自检（再加一层保障）
+    agent_output = local_output_self_check(agent_output)
+    
+    return agent_output
+
+# -----------------------------
+# 本地输出自检函数（可扩展）
+# -----------------------------
+def local_output_self_check(text: str) -> str:
+    """
+    简单自检：
+    - 是否包含评判性语言
+    - 是否有具体下一步行动
+    """
+    forbidden_keywords = ["懒", "错", "应该", "必须"]  # 简单示例
+    for kw in forbidden_keywords:
+        if kw in text:
+            text = text.replace(kw, "（请参考行动建议）")  # 简单替换处理
+    
+    # 检查是否包含“下一步行动”，若没有自动提示
+    if "下一步行动" not in text and "可执行" not in text:
+        text += "\n\n提示：请给出一个最小、可执行的下一步行动。"
+    
+    return text
+
+# -----------------------------
+# 测试示例
+# -----------------------------
+if __name__ == "__main__":
+    sample_input = "我想改善我的血糖控制，但总是半途而废。"
+    sample_context = {
+        "阶段": "推进",
+        "情绪": "焦虑",
+        "文化背景": "中国都市白领",
+        "生活环境": "工作忙碌，饮食不规律"
+    }
+    
+    output = generate_agent_response(sample_input, sample_context)
+    print("=== AGENT 输出 ===\n")
+    print(output)

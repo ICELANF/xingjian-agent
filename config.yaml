@@ -1,0 +1,9 @@
+model:
+  embed: "nomic-embed-text:latest"
+  llm: "llama3:latest"
+paths:
+  obsidian_vault: "J:/Knowledge-Hub-Obsidian-Vault/02-Knowledge-Base/Books"
+  vectordb: "J:/xingjian-agent/data/vectordb"
+
+agent:
+  name: 行健AGENT
